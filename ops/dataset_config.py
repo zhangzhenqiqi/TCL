@@ -11,7 +11,7 @@ def get_rootdataset(dataset):
 def return_ucf101(modality):
     filename_categories = 'data/classInd.txt'
     if modality == 'RGB':
-        root_data = ROOT_DATASET + 'Frames/'
+        root_data = ROOT_DATASET + 'rawframes/'
         filename_imglist_train = 'data/ucf101_rgb_train_split_1.txt'
         filename_imglist_val = 'data/ucf101_rgb_val_split_1.txt'
         prefix = 'img_{:05d}.jpg'
@@ -33,7 +33,7 @@ def return_hmdb51(modality):
 
 
 def return_something(modality):
-    filename_categories = 'something/v1/category.txt'
+    filename_categories = 'something/v1/classInd.txt'
     if modality == 'RGB':
         root_data = ROOT_DATASET + 'something/v1/20bn-something-something-v1'
         filename_imglist_train = 'something/v1/train_videofolder.txt'
