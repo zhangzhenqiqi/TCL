@@ -82,7 +82,6 @@ class Action(nn.Module):
         x_shift = x_shift.permute([0, 4, 3, 1, 2])  # (n_batch, n_segment, c, h, w)
         x_shift = x_shift.contiguous().view(nt, c, h, w)
 
-
         # 3D convolution: c*T*h*w, spatial temporal excitation
         nt, c, h, w = x_shift.size()
         x_p1 = x_shift.view(n_batch, self.n_segment, c, h, w).transpose(2, 1).contiguous()  # (n,c,t,h,w)
@@ -172,46 +171,60 @@ def make_temporal_shift(net, n_segment, n_div=8, place='blockres', temporal_pool
     assert n_segment_list[-1] > 0
     print('=> n_segment per stage: {}'.format(n_segment_list))
 
+    n_round = 1
+
+    def make_block_temporal(stage, this_segment):
+        blocks = list(stage.children())
+        print('=> Processing stage with {} blocks residual'.format(len(blocks)))
+        for i, b in enumerate(blocks):
+            if i % n_round == 0:
+                blocks[i].conv1 = Action(b.conv1, n_segment=this_segment, shift_div=n_div)
+                # pdb.set_trace()
+        return nn.Sequential(*blocks)
+
     # pdb.set_trace()
-    import torchvision
-    if isinstance(net, torchvision.models.ResNet):
-        if place == 'block':
-            def make_block_temporal(stage, this_segment):
-                blocks = list(stage.children())
-                print('=> Processing stage with {} blocks'.format(len(blocks)))
-                for i, b in enumerate(blocks):
-                    blocks[i].conv1 = Action(b.conv1, n_segment=this_segment, shift_div=n_div)
-                return nn.Sequential(*(blocks))
+    net.layer1 = make_block_temporal(net.layer1, n_segment_list[0])
 
-            pdb.set_trace()
-            net.layer1 = make_block_temporal(net.layer1, n_segment_list[0])
-            net.layer2 = make_block_temporal(net.layer2, n_segment_list[1])
-            net.layer3 = make_block_temporal(net.layer3, n_segment_list[2])
-            net.layer4 = make_block_temporal(net.layer4, n_segment_list[3])
-
-        elif 'blockres' in place:
-            n_round = 1
-            if len(list(net.layer3.children())) >= 23:
-                n_round = 2
-                print('=> Using n_round {} to insert temporal shift'.format(n_round))
-
-            def make_block_temporal(stage, this_segment):
-                blocks = list(stage.children())
-                print('=> Processing stage with {} blocks residual'.format(len(blocks)))
-                for i, b in enumerate(blocks):
-                    if i % n_round == 0:
-                        blocks[i].conv1 = Action(b.conv1, n_segment=this_segment, shift_div=n_div)
-                        # pdb.set_trace()
-                return nn.Sequential(*blocks)
-
-            # pdb.set_trace()
-            net.layer1 = make_block_temporal(net.layer1, n_segment_list[0])
-            # net.layer2 = make_block_temporal(net.layer2, n_segment_list[1])
-            # net.layer3 = make_block_temporal(net.layer3, n_segment_list[2])
-            # net.layer4 = make_block_temporal(net.layer4, n_segment_list[3])
-
-    else:
-        raise NotImplementedError(place)
+    # pdb.set_trace()
+    # import torchvision
+    # if isinstance(net, torchvision.models.ResNet):
+    #     if place == 'block':
+    #         def make_block_temporal(stage, this_segment):
+    #             blocks = list(stage.children())
+    #             print('=> Processing stage with {} blocks'.format(len(blocks)))
+    #             for i, b in enumerate(blocks):
+    #                 blocks[i].conv1 = Action(b.conv1, n_segment=this_segment, shift_div=n_div)
+    #             return nn.Sequential(*(blocks))
+    #
+    #         pdb.set_trace()
+    #         net.layer1 = make_block_temporal(net.layer1, n_segment_list[0])
+    #         net.layer2 = make_block_temporal(net.layer2, n_segment_list[1])
+    #         net.layer3 = make_block_temporal(net.layer3, n_segment_list[2])
+    #         net.layer4 = make_block_temporal(net.layer4, n_segment_list[3])
+    #
+    #     elif 'blockres' in place:
+    #         n_round = 1
+    #         if len(list(net.layer3.children())) >= 23:
+    #             n_round = 2
+    #             print('=> Using n_round {} to insert temporal shift'.format(n_round))
+    #
+    #         def make_block_temporal(stage, this_segment):
+    #             blocks = list(stage.children())
+    #             print('=> Processing stage with {} blocks residual'.format(len(blocks)))
+    #             for i, b in enumerate(blocks):
+    #                 if i % n_round == 0:
+    #                     blocks[i].conv1 = Action(b.conv1, n_segment=this_segment, shift_div=n_div)
+    #                     # pdb.set_trace()
+    #             return nn.Sequential(*blocks)
+    #
+    #         # pdb.set_trace()
+    #         net.layer1 = make_block_temporal(net.layer1, n_segment_list[0])
+    #         # net.layer2 = make_block_temporal(net.layer2, n_segment_list[1])
+    #         # net.layer3 = make_block_temporal(net.layer3, n_segment_list[2])
+    #         # net.layer4 = make_block_temporal(net.layer4, n_segment_list[3])
+    #
+    # else:
+    #     raise NotImplementedError(place)
 
 
 def make_temporal_pool(net, n_segment):
