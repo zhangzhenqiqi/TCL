@@ -65,6 +65,9 @@ def main():
                 fc_lr5=not (args.tune_from and args.dataset in args.tune_from),
                 temporal_pool=args.temporal_pool,
                 non_local=args.non_local)
+
+    from ActionNet.action import make_temporal_shift
+    make_temporal_shift(model.base_model, n_segment=8)
     print("==============model desccription=============")
     print(model)
     crop_size = model.crop_size
